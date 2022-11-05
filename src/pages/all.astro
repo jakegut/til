@@ -5,11 +5,9 @@ import Footer from '../components/Footer.astro';
 import { SITE_TITLE, SITE_DESCRIPTION } from '../config';
 import { published } from '../data/post';
 
-// console.log((await Astro.glob('./**/*/*.{md,mdx}')).map(d => d.url))
-
 // Use Astro.glob() to fetch all posts, and then sort them by date.
 const markdownFiles = await Astro.glob('../../**/*.md');
-// console.log(markdownFiles.map(f => f.file))
+
 const posts = published( markdownFiles );
 
 const byTag = {}
@@ -21,8 +19,6 @@ posts.forEach(p => {
 
     byTag[p.tag] = [...byTag[p.tag], p]
 })
-
-console.log(byTag)
 
 const tags = Object.keys(byTag).sort((a, b) => byTag[b][0].timestamp - byTag[a][0].timestamp);
 ---

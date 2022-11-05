@@ -1,16 +1,109 @@
 ---
 layout: "../src/layouts/BlogPost.astro"
-title: "About Go's net conn"
-description: "Lorem ipsum dolor sit amet"
-pubDate: "Nov 01 2022"
+title: "Reading from Go's net Conn"
+pubDate: "Nov 04 2022"
 ---
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Vitae ultricies leo integer malesuada nunc vel risus commodo viverra. Adipiscing enim eu turpis egestas pretium. Euismod elementum nisi quis eleifend quam adipiscing. In hac habitasse platea dictumst vestibulum. Sagittis purus sit amet volutpat. Netus et malesuada fames ac turpis egestas. Eget magna fermentum iaculis eu non diam phasellus vestibulum lorem. Varius sit amet mattis vulputate enim. Habitasse platea dictumst quisque sagittis. Integer quis auctor elit sed vulputate mi. Dictumst quisque sagittis purus sit amet.
+I was working through [codecrafter's](https://codecrafters.io) "Build your own Redis in Go" tutorial. While it was a very interesting tutorial, I got hung up when trying to read from the connection and the solution for that particular step was wrong. Here's a barebones Go TCP listener based on the solution, ignoring a few errors:
 
-Morbi tristique senectus et netus. Id semper risus in hendrerit gravida rutrum quisque non tellus. Habitasse platea dictumst quisque sagittis purus sit amet. Tellus molestie nunc non blandit massa. Cursus vitae congue mauris rhoncus. Accumsan tortor posuere ac ut. Fringilla urna porttitor rhoncus dolor. Elit ullamcorper dignissim cras tincidunt lobortis. In cursus turpis massa tincidunt dui ut ornare lectus. Integer feugiat scelerisque varius morbi enim nunc. Bibendum neque egestas congue quisque egestas diam. Cras ornare arcu dui vivamus arcu felis bibendum. Dignissim suspendisse in est ante in nibh mauris. Sed tempus urna et pharetra pharetra massa massa ultricies mi.
+```go
+package main
 
-Mollis nunc sed id semper risus in. Convallis a cras semper auctor neque. Diam sit amet nisl suscipit. Lacus viverra vitae congue eu consequat ac felis donec. Egestas integer eget aliquet nibh praesent tristique magna sit amet. Eget magna fermentum iaculis eu non diam. In vitae turpis massa sed elementum. Tristique et egestas quis ipsum suspendisse ultrices. Eget lorem dolor sed viverra ipsum. Vel turpis nunc eget lorem dolor sed viverra. Posuere ac ut consequat semper viverra nam. Laoreet suspendisse interdum consectetur libero id faucibus. Diam phasellus vestibulum lorem sed risus ultricies tristique. Rhoncus dolor purus non enim praesent elementum facilisis. Ultrices tincidunt arcu non sodales neque. Tempus egestas sed sed risus pretium quam vulputate. Viverra suspendisse potenti nullam ac tortor vitae purus faucibus ornare. Fringilla urna porttitor rhoncus dolor purus non. Amet dictum sit amet justo donec enim.
+import (
+    "fmt"
+    "net"
+    "os"
+)
 
-Mattis ullamcorper velit sed ullamcorper morbi tincidunt. Tortor posuere ac ut consequat semper viverra. Tellus mauris a diam maecenas sed enim ut sem viverra. Venenatis urna cursus eget nunc scelerisque viverra mauris in. Arcu ac tortor dignissim convallis aenean et tortor at. Curabitur gravida arcu ac tortor dignissim convallis aenean et tortor. Egestas tellus rutrum tellus pellentesque eu. Fusce ut placerat orci nulla pellentesque dignissim enim sit amet. Ut enim blandit volutpat maecenas volutpat blandit aliquam etiam. Id donec ultrices tincidunt arcu. Id cursus metus aliquam eleifend mi.
+func main() {
+    l, _ := net.Listen("tcp", "0.0.0.0:6379")
 
-Tempus quam pellentesque nec nam aliquam sem. Risus at ultrices mi tempus imperdiet. Id porta nibh venenatis cras sed felis eget velit. Ipsum a arcu cursus vitae. Facilisis magna etiam tempor orci eu lobortis elementum. Tincidunt dui ut ornare lectus sit. Quisque non tellus orci ac. Blandit libero volutpat sed cras. Nec tincidunt praesent semper feugiat nibh sed pulvinar proin gravida. Egestas integer eget aliquet nibh praesent tristique magna.
+    conn, _ := l.Accept()
+
+    defer conn.Close()
+
+    for {
+        if _, err := conn.Read([]byte{}); err != nil {
+            fmt.Println("Error reading from client: ", err.Error())
+            continue
+        }
+
+        conn.Write([]byte("+PONG\r\n"))
+    }
+}
+```
+
+The idea was to respond with `PONG` (in [RESP](https://redis.io/docs/reference/protocol-spec/#resp-simple-strings)) if we received something from the client. However, the tutorial assumed `conn.Read(...)` blocked until it actually received something, but that wasn't the case.
+
+To solve this I tried getting the `n` value from `conn.Read(...)`, which I assumed is the number of bytes received. If we recieved no bytes we continue.
+
+```go
+func main() {
+    ...
+
+    for {
+        n, err := conn.Read([]byte{})
+        if err != nil {
+            fmt.Println("Error reading from client: ", err.Error())
+            continue
+        }
+
+        if n == 0 {
+            continue
+        }
+
+
+        conn.Write([]byte("+PONG\r\n"))
+    }
+}
+```
+
+That didn't work... When reading the [Go documentation](https://pkg.go.dev/net@go1.18.8#Buffers.Read) about it, I wasn't sure if my assumption was correct since it didn't even mention what `n` was supposed to be.
+
+Digging through Go's source code revealed [this](https://cs.opensource.google/go/go/+/refs/tags/go1.18.8:src/internal/poll/fd_unix.go;l=149-153;drc=90b40c0496440fbd57538eb4ba303164ed923d93;bpv=1;bpt=1):
+
+```go
+// Read implements io.Reader.
+func (fd *FD) Read(p []byte) (int, error) {
+    ...
+    if len(p) == 0 {
+        // If the caller wanted a zero byte read, return immediately
+        // without trying (but after acquiring the readLock).
+        // Otherwise syscall.Read returns 0, nil which looks like
+        // io.EOF.
+        // TODO(bradfitz): make it wait for readability? (Issue 15735)
+        return 0, nil
+    }
+    ...
+}
+```
+
+Interestingly enough, the tutorial's assumption was left as some TODO and the [issue mentioned](https://github.com/golang/go/issues/15735) was been in active discussion for the past 6 years.
+
+Anyways, let's not pass in an empty byte array then:
+
+```go
+func main() {
+    ...
+
+    d := make([]byte, 1024)
+    for {
+        n, err := conn.Read(d)
+        if err != nil {
+            fmt.Println("Error reading from client: ", err.Error())
+            continue
+        }
+
+        if n == 0 {
+            continue
+        }
+
+
+        conn.Write([]byte("+PONG\r\n"))
+    }
+}
+```
+
+Sure enough, that did the trick since `n` is literally the number of bytes _read_ and not received.
+
+While it would be nice for it to block for readability, I think having better documentation would've been nice.
