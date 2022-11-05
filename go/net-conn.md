@@ -33,7 +33,7 @@ func main() {
 }
 ```
 
-The idea was to respond with `PONG` (in [RESP](https://redis.io/docs/reference/protocol-spec/#resp-simple-strings)) if we received something from the client. However, the tutorial assumed `conn.Read(...)` blocked until it received something, but that wasn't the case.
+The idea was to respond with `PONG` (in [RESP](https://redis.io/docs/reference/protocol-spec/#resp-simple-strings)) if we received something from the client. However, the tutorial assumed `conn.Read(...)` blocked until it received something, but that wasn't the case. Instead, we'd send a bunch of `+PONG\r\n`s.
 
 To solve this I tried getting the `n` value from `conn.Read(...)`, which I assumed is the number of bytes received. If we receive no bytes we continue.
 
