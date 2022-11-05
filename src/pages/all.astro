@@ -40,7 +40,7 @@ const tags = Object.keys(byTag).sort((a, b) => byTag[b][0].timestamp - byTag[a][
                         <ul>
                             { byTag[t].map(post => (
                             <li>
-                                <a href={post.slug}>{post.title}</a>
+                                <a href={`/${post.slug}`}>{post.title}</a>
                                 <time datetime={post.date}>
                                     {new Date(post.date).toLocaleDateString('en-us', {
                                         year: 'numeric',

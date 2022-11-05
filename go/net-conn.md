@@ -4,7 +4,7 @@ title: "Reading from Go's net Conn"
 pubDate: "Nov 04 2022"
 ---
 
-I was working through [codecrafter's](https://codecrafters.io) "Build your own Redis in Go" tutorial. While it was a very interesting tutorial, I got hung up when trying to read from the connection and the solution for that particular step was wrong. Here's a barebones Go TCP listener based on the solution, ignoring a few errors:
+I was working through [Codecrafter's](https://codecrafters.io) "Build your own Redis in Go" tutorial. While it was a very interesting tutorial, I got hung up when trying to read from the connection and the solution for that particular step was wrong. Here's a barebones Go TCP listener based on the solution, ignoring a few errors:
 
 ```go
 package main
@@ -33,9 +33,9 @@ func main() {
 }
 ```
 
-The idea was to respond with `PONG` (in [RESP](https://redis.io/docs/reference/protocol-spec/#resp-simple-strings)) if we received something from the client. However, the tutorial assumed `conn.Read(...)` blocked until it actually received something, but that wasn't the case.
+The idea was to respond with `PONG` (in [RESP](https://redis.io/docs/reference/protocol-spec/#resp-simple-strings)) if we received something from the client. However, the tutorial assumed `conn.Read(...)` blocked until it received something, but that wasn't the case.
 
-To solve this I tried getting the `n` value from `conn.Read(...)`, which I assumed is the number of bytes received. If we recieved no bytes we continue.
+To solve this I tried getting the `n` value from `conn.Read(...)`, which I assumed is the number of bytes received. If we receive no bytes we continue.
 
 ```go
 func main() {
@@ -78,7 +78,7 @@ func (fd *FD) Read(p []byte) (int, error) {
 }
 ```
 
-Interestingly enough, the tutorial's assumption was left as some TODO and the [issue mentioned](https://github.com/golang/go/issues/15735) was been in active discussion for the past 6 years.
+Interestingly enough, the tutorial's assumption was left as some TODO and the [issue mentioned](https://github.com/golang/go/issues/15735) has been in active discussion for the past 6 years.
 
 Anyways, let's not pass in an empty byte array then:
 
@@ -104,6 +104,6 @@ func main() {
 }
 ```
 
-Sure enough, that did the trick since `n` is literally the number of bytes _read_ and not received.
+Sure enough, that did the trick since `n` is the number of bytes _read_ and not received.
 
 While it would be nice for it to block for readability, I think having better documentation would've been nice.
