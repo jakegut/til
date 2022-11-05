@@ -1,0 +1,68 @@
+---
+import BaseHead from '../components/BaseHead.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import { SITE_TITLE, SITE_DESCRIPTION } from '../config';
+import { published } from '../data/post';
+
+// console.log((await Astro.glob('./**/*/*.{md,mdx}')).map(d => d.url))
+
+// Use Astro.glob() to fetch all posts, and then sort them by date.
+const markdownFiles = await Astro.glob('../../**/*.md');
+// console.log(markdownFiles.map(f => f.file))
+const posts = published( markdownFiles );
+---
+
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
+		<style>
+			ul {
+				list-style-type: none;
+				padding: unset;
+			}
+			ul li {
+				display: flex;
+			}
+			ul li p {
+				flex: 0 0 80px;
+				margin: 0;
+			}
+			ul li time {
+				padding-left: 20px;
+				/* flex: 0 0 120px; */
+				color: #999999;
+			}
+			ul li a {
+				flex: 0 0 300px;
+			}
+			ul li a:visited {
+				color: #af76e0;
+			}
+		</style>
+	</head>
+	<body>
+		<Header />
+		<main>
+			<section>
+				<ul>
+					{posts.map((post) => (
+						<li>
+							<p>{post.tag}</p>
+							<a href={post.slug}>{post.title}</a>
+							<time datetime={post.date}>
+								{new Date(post.date).toLocaleDateString('en-us', {
+									year: 'numeric',
+									month: 'short',
+									day: 'numeric',
+								})}
+							</time>
+						</li>
+					))}
+				</ul>
+			</section>
+		</main>
+		<Footer />
+	</body>
+</html>
