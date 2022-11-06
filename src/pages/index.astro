@@ -24,9 +24,10 @@ const posts = published( markdownFiles );
 			}
 			ul li {
 				display: flex;
+				justify-content: space-evenly;
 			}
 			ul li p {
-				flex: 0 0 80px;
+				flex: 0 0 40px;
 				margin: 0;
 			}
 			ul li time {
@@ -35,7 +36,8 @@ const posts = published( markdownFiles );
 				color: #999999;
 			}
 			ul li a {
-				flex: 0 0 300px;
+				/* flex: 0 0 300px; */
+				flex-grow: 2;
 			}
 			ul li a:visited {
 				color: #af76e0;

@@ -58,7 +58,7 @@ func main() {
 }
 ```
 
-That didn't work... When reading the [Go documentation](https://pkg.go.dev/net@go1.18.8#Buffers.Read) about it, I wasn't sure if my assumption was correct since it didn't even mention what `n` was supposed to be.
+That didn't work... When reading the [Go documentation](https://pkg.go.dev/net@go1.18.8#Conn) about it, I wasn't sure if my assumption was correct since it didn't even mention what `n` was supposed to be.
 
 Digging through Go's source code revealed [this](https://cs.opensource.google/go/go/+/refs/tags/go1.18.8:src/internal/poll/fd_unix.go;l=149-153;drc=90b40c0496440fbd57538eb4ba303164ed923d93;bpv=1;bpt=1):
 
