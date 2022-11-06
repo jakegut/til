@@ -8,7 +8,8 @@
     "start": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "readme": "python3 gen_readme.py > README.md"
   },
   "dependencies": {
     "astro": "^1.6.0",
